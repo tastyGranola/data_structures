@@ -1,0 +1,226 @@
+class Node:
+
+    def __init__(self,value):
+        self.value = value
+        self.leftChild = None
+        self.rightChild = None
+        self.parent = None
+        self.height = 0
+        self.rightHeight = 0
+        self.leftHeight = 0
+        self.balanceFactor = None
+
+    def __str__(self):
+        return str(self.value)
+
+
+class AVL_Tree:
+
+    def __init__(self):
+        self.root = None
+        self.len = 0
+
+    def __iter__(self):
+        return AVL_iterator
+
+    def __str__(self):
+        string = ""
+        for i in self:
+            string += str(i) + ' '
+        return string
+
+    def __len__(self):
+        return self.len
+
+    def clear(self):
+        self.root = None
+        self.len = 0
+
+    def reset_height(self,node):
+        ''' after performing avl rotation,
+        reset the heights of each node according to it.'''
+        node.height = 1
+        node.leftHeight = 1
+        node.rightHeight = 1
+        node.balanceFactor = 0
+        node.leftChild.height = 0
+        node.leftChild.leftHeight = 0
+        node.leftChild.rightHeight = 0
+        node.leftChild.balanceFactor = 0
+        node.rightChild.height = 0
+        node.rightChild.leftHeight = 0
+        node.rightChild.rightHeight = 0
+        node.rightChild.balanceFactor = 0
+
+    def childtype(self, node):
+        '''if node has no parent, return 0
+        if node is leftChild, return 1
+        if node is rightChild, return 2'''
+        if node.parent is None:
+            return 0
+        elif node.parent.leftChild is node:
+            return 1
+        else:
+            return 2
+
+    def avl_rotation(self,node):
+        '''given that the abs(balnaceFactor) of node is greater than 1,
+        performs avl rotation. there are 4 cases.'''
+        if node.leftChild and node.leftChild.leftChild: # left, left straight line
+            #if node is self.root:
+            #    self.root = node.leftChild
+            new_parent = node.leftChild
+            new_parent.parent = node.parent
+            if new_parent.parent is None:
+                self.root = new_parent
+            new_parent.rightChild = node
+            node.parent = new_parent
+            node.leftChild = None
+            self.reset_height(new_parent)
+
+        if node.leftChild and node.leftChild.rightChild: # left, right kink
+            new_parent = node.leftChild.rightChild
+            if self.childtype(node) == 0:
+                self.root = new_parent
+            elif self.childtype(node) == 1:
+                node.parent.leftChild = new_parent
+            else:
+                node.parent.rightChild = new_parent
+            new_parent.rightChild = node
+            new_parent.leftChild = node.leftChild
+            new_parent.parent = node.parent
+            node.leftChild.parent = new_parent
+            node.parent = new_parent
+            node.leftChild.rightChild = None
+            self.reset_height(new_parent)
+
+        if node.rightChild and node.rightChild.leftChild: # right, left kink
+            new_parent = node.rightChild.leftChild
+            if self.childtype(node) == 0:
+                self.root = new_parent
+            elif self.childtype(node) == 1:
+                node.parent.leftChild = new_parent
+            else:
+                node.parent.rightChild = new_parent
+            new_parent.leftChild = node
+            new_parent.rightChild = node.rightChild
+            new_parent.parent = node.parent
+            node.rightChild.parent = new_parent
+            node.parent = new_parent
+            node.rightChild.leftChild = None
+            self.reset_height(new_parent)
+
+        if node.rightChild and node.rightChild.rightChild: # right, right straight line
+            #if node is self.root:
+            #    self.root = node.rightChild
+            new_parent = node.rightChild
+            new_parent.parent = node.parent
+            if new_parent.parent is None:
+                self.root = new_parent
+            new_parent.leftChild = node
+            node.parent = new_parent
+            node.rightChild = None
+            self.reset_height(new_parent)
+
+    def insert(self, value):
+        '''creates a node with the given value and insert it into
+        AVL Tree. First, it uses a typical binary tree algorithm.
+        Then, it performs AVL rotation if the avl property is violated.'''
+        node = Node(value)
+        if self.root is None:
+            self.root = node
+            return
+        curr = self.root
+        while True:
+            if value >= curr.value:
+                if curr.rightChild:
+                    curr = curr.rightChild
+                else:
+                    curr.rightChild = node
+                    node.parent = curr
+                    curr = curr.rightChild
+                    break
+            else:
+                if curr.leftChild:
+                    curr = curr.leftChild
+                else:
+                    curr.leftChild = node
+                    node.parent = curr
+                    curr = curr.leftChild
+                    break
+        while True:
+            if curr.rightChild:
+                curr.rightHeight = curr.rightChild.height + 1
+            if curr.leftChild:
+                curr.leftHeight = curr.leftChild.height + 1
+            curr.height = max(curr.leftHeight, curr.rightHeight)
+            curr.balanceFactor = curr.rightHeight - curr.leftHeight
+            if abs(curr.balanceFactor) > 1:
+                self.avl_rotation(curr)
+                break
+            curr = curr.parent
+            if curr is None:
+                break
+        self.len += 1
+
+    def find(self, value):
+        '''finds node in AVL Tree, if found, it returns the node
+        if it cannot find the node, returns None.'''
+        curr = self.root
+        if not curr:
+            return
+        while True:
+            if value == curr.value:
+                return curr
+            if value > curr.value:
+                if curr.rightChild:
+                    curr = curr.rightChild
+                else:
+                    return
+            else:
+                if curr.leftChild:
+                    curr = curr.leftChild
+                else:
+                    return
+
+    def successor(self, node):
+        '''returns the node that has the next largest node.
+        Note : successor can either be an ancestor or a descendant,
+        we need to consider both.'''
+        if node.rightChild and node.parent: # compare descendants with ancestors
+            curr1 = node.rightChild
+            while curr1.leftChild is not None:
+                curr1 = curr1.leftChild
+            curr2 = node
+            while True:
+                if curr2 is None:
+                    curr2value = float('inf')
+                    break
+                elif self.childtype(curr2) == 1:
+                    curr2 = curr2.parent
+                    curr2value = curr2.value
+                    break
+                else:
+                    curr2 = curr2.parent
+            if curr1.value <= curr2value:
+                return curr1
+            else:
+                return curr2
+
+        elif node.rightChild: # doesn't have parent, only has rightChild
+            curr = node.rightChild
+            while curr.leftChild is not None:
+                curr = curr.leftChild
+            return curr
+
+        elif node.parent: # doesn't have rightChild, only has parent
+            curr = node
+            while True:
+                if curr is None: # if can't find parent that has larger value, return None
+                    return None
+                elif self.childtype(curr) == 1:
+                    return curr.parent
+                else:
+                    curr = curr.parent
+        else: #  neither has rightChild or parent
+            return None
